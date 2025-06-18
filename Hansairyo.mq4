@@ -11,6 +11,7 @@ input double Multiplier = 2.0;            // ナンピン倍率
 input int NampinPips = 200;               // ナンピン幅（pips）
 input int TakeProfitPips = 100;           // 利確pips（平均取得単価から）
 input int NampinInterval = 30;            // ナンピンインターバル（秒）
+input int SpreadMultiplier = 2;           // スプレッド倍率（ナンピン条件用）
 input int MagicNumber = 12345;            // マジックナンバー
 input string Comment = "Hansairyo";       // オーダーコメント
 
@@ -121,13 +122,15 @@ void CheckNampinCondition()
    if(orderType == -1) return;
    
    double currentPrice = (orderType == OP_BUY) ? Bid : Ask;
+   double spread = (Ask - Bid) / Point / 10; // スプレッドをpips単位で計算
+   double adjustedNampinPips = NampinPips + (spread * SpreadMultiplier); // スプレッドを勘案したナンピン幅
    double pipsDiff = 0.0;
    
    if(orderType == OP_BUY)
    {
       // 買いポジションの場合、価格が下がったらナンピン
       pipsDiff = (averagePrice - currentPrice) / Point / 10;
-      if(pipsDiff >= NampinPips)
+      if(pipsDiff >= adjustedNampinPips)
       {
          ExecuteNampin(OP_BUY);
       }
@@ -136,7 +139,7 @@ void CheckNampinCondition()
    {
       // 売りポジションの場合、価格が上がったらナンピン
       pipsDiff = (currentPrice - averagePrice) / Point / 10;
-      if(pipsDiff >= NampinPips)
+      if(pipsDiff >= adjustedNampinPips)
       {
          ExecuteNampin(OP_SELL);
       }
@@ -254,11 +257,16 @@ void UpdateDisplay()
 {
    string displayText = "";
    displayText += "現在時間: " + TimeToStr(TimeCurrent(), TIME_DATE|TIME_MINUTES) + "\n";
-   displayText += "ポジション数: " + IntegerToString(totalPositions) + "\n";
-   displayText += "総ロット: " + DoubleToStr(totalLots, 2) + "\n";
    
-   if(totalPositions > 0)
+   // ポジションがない場合は時間のみ表示
+   if(totalPositions == 0)
    {
+      displayText += "ポジション: なし";
+   }
+   else
+   {
+      displayText += "ポジション数: " + IntegerToString(totalPositions) + "\n";
+      displayText += "総ロット: " + DoubleToStr(totalLots, 2) + "\n";
       displayText += "平均価格: " + DoubleToStr(averagePrice, Digits) + "\n";
       
       // 含み損益を計算
@@ -275,7 +283,13 @@ void UpdateDisplay()
       }
       
       string profitText = (totalProfit >= 0) ? "含み益: " : "含み損: ";
-      displayText += profitText + DoubleToStr(MathAbs(totalProfit), 2) + "\n";
+      displayText += profitText + DoubleToStr(MathAbs(totalProfit), 2);
+      
+      // スプレッド情報も表示
+      double spread = (Ask - Bid) / Point / 10;
+      double adjustedNampinPips = NampinPips + (spread * SpreadMultiplier);
+      displayText += "\nスプレッド: " + DoubleToStr(spread, 1) + "pips";
+      displayText += "\n調整ナンピン幅: " + DoubleToStr(adjustedNampinPips, 1) + "pips";
    }
    
    Comment(displayText);
