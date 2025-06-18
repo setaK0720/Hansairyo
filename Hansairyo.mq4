@@ -46,8 +46,6 @@ void OnDeinit(const int reason)
 void OnTick()
   {
 //---
-   if(OrdersTotal() == 0) return; // ポジションがない場合は何もしない
-   
    UpdatePositionInfo();
    
    // 裁量エントリーされたポジションがある場合のみ処理
@@ -60,7 +58,7 @@ void OnTick()
       CheckTakeProfitCondition();
    }
    
-   // 画面表示更新
+   // 画面表示更新（ポジションの有無に関わらず実行）
    UpdateDisplay();
   }
 
